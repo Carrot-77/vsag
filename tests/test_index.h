@@ -109,6 +109,8 @@ protected:
 
     static void
     TestCalcDistanceById(const IndexPtr& index, const TestDatasetPtr& dataset, float error = 1e-5);
+    static void
+    TestBatchCalcDistanceById(const IndexPtr& index, const TestDatasetPtr& dataset, float error = 1e-5);
 
     static void
     TestSerializeFile(const IndexPtr& index_from,
