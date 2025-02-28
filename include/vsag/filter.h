@@ -49,6 +49,9 @@ public:
         return 1.0f;  // (default) all vectors is valid
     }
 
+    virtual void
+    EntryPoint(int64_t id) const = 0;
+
     /**
       * @brief Get the distribution of pre-filter
       * 
@@ -61,5 +64,17 @@ public:
 };
 
 using FilterPtr = std::shared_ptr<Filter>;
+
+class DiscardNode {
+public:
+  virtual int AddDiscardNode(float dis, int64_t label) = 0;
+  virtual int64_t GetTopID() = 0;
+  virtual float GetTopDist() = 0;
+  virtual void PopDiscard() = 0;
+  virtual bool Empty() = 0;
+
+};
+
+using DiscardPtr = std::shared_ptr<DiscardNode>;
 
 };  // namespace vsag

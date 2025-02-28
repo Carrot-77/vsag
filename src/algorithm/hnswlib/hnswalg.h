@@ -42,6 +42,7 @@
 #include "simd/simd.h"
 #include "visited_list_pool.h"
 #include "vsag/dataset.h"
+#include "vsag/discard.h"
 namespace hnswlib {
 using InnerIdType = vsag::InnerIdType;
 using linklistsizeint = unsigned int;
@@ -253,8 +254,17 @@ public:
                       const void* data_point,
                       size_t ef,
                       const vsag::FilterPtr is_id_allowed = nullptr,
-                      const float skip_ratio = 0.9f) const;
+                      const float skip_ratio = 0.9f,
+                      vsag::DiscardPtr discard = nullptr) const;
 
+
+    template <bool has_deletions, bool collect_metrics = false>
+    MaxHeap
+    searchBaseLayerSTNext(const void* data_point,
+                      size_t ef,
+                      const vsag::FilterPtr is_id_allowed = nullptr,
+                      const float skip_ratio = 0.9f,
+                      vsag::DiscardPtr discard = nullptr) const;
     template <bool has_deletions, bool collect_metrics = false>
     MaxHeap
     searchBaseLayerST(InnerIdType ep_id,
@@ -412,7 +422,8 @@ public:
               size_t k,
               uint64_t ef,
               const vsag::FilterPtr is_id_allowed = nullptr,
-              const float skip_ratio = 0.9f) const override;
+              const float skip_ratio = 0.9f,
+              vsag::DiscardPtr discard = nullptr) const override;
 
     std::priority_queue<std::pair<float, LabelType>>
     searchRange(const void* query_data,
