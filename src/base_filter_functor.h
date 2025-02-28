@@ -68,6 +68,9 @@ public:
             return not fallback_func_(id);
         }
     }
+    void EntryPoint(int64_t id) const override {
+        //do nothing
+    }
 
 private:
     std::function<bool(int64_t)> fallback_func_{nullptr};
@@ -88,6 +91,10 @@ public:
     [[nodiscard]] float
     ValidRatio() const override {
         return filter_impl_->ValidRatio();
+    }
+
+    void EntryPoint(int64_t id) const override {
+        //do nothing
     }
 
     [[nodiscard]] Distribution
