@@ -197,10 +197,11 @@ HNSW::knn_search_internal(const DatasetPtr& query,
 };
 
 tl::expected<DatasetPtr, Error>
-HNSW::knn_search(const DatasetPtr& query,
+HNSW::knn_search_next(const DatasetPtr& query,
                  int64_t k,
                  const std::string& parameters,
-                 const FilterPtr filter_ptr) const {
+                 const FilterPtr filter_ptr,
+                 DiscardPtr discard) const {
 #ifndef ENABLE_TESTS
     SlowTaskTimer t_total("hnsw knnsearch", 20);
 #endif
@@ -244,7 +245,8 @@ HNSW::knn_search(const DatasetPtr& query,
                                            k,
                                            std::max(params.ef_search, k),
                                            filter_ptr,
-                                           params.skip_ratio);
+                                           params.skip_ratio,
+                                           discard);
         } catch (const std::runtime_error& e) {
             LOG_ERROR_AND_RETURNS(ErrorType::INTERNAL_ERROR,
                                   "failed to perofrm knn_search(internalError): ",
@@ -294,6 +296,122 @@ HNSW::knn_search(const DatasetPtr& query,
         for (auto j = static_cast<int64_t>(results.size() - 1); j >= 0; --j) {
             dists[j] = results.top().first;
             ids[j] = results.top().second;
+            results.pop();
+        }
+
+        return std::move(result);
+    } catch (const std::invalid_argument& e) {
+        LOG_ERROR_AND_RETURNS(ErrorType::INVALID_ARGUMENT,
+                              "failed to perform knn_search(invalid argument): ",
+                              e.what());
+    } catch (const std::bad_alloc& e) {
+        LOG_ERROR_AND_RETURNS(ErrorType::NO_ENOUGH_MEMORY,
+                              "failed to perform knn_search(not enough memory): ",
+                              e.what());
+    }    
+}
+
+tl::expected<DatasetPtr, Error>
+HNSW::knn_search(const DatasetPtr& query,
+                 int64_t k,
+                 const std::string& parameters,
+                 const FilterPtr filter_ptr,
+                 DiscardPtr discard) const {
+#ifndef ENABLE_TESTS
+    SlowTaskTimer t_total("hnsw knnsearch", 20);
+#endif
+    try {
+        // cannot perform search on empty index
+        if (empty_index_) {
+            auto ret = Dataset::Make();
+            ret->Dim(0)->NumElements(1);
+            return ret;
+        }
+
+        // check query vector
+        CHECK_ARGUMENT(query->GetNumElements() == 1, "query dataset should contain 1 vector only");
+        void* vector = nullptr;
+        size_t data_size = 0;
+        get_vectors(query, &vector, &data_size);
+        int64_t query_dim = query->GetDim();
+        CHECK_ARGUMENT(
+            query_dim == dim_,
+            fmt::format("query.dim({}) must be equal to index.dim({})", query_dim, dim_));
+
+        // check k
+        CHECK_ARGUMENT(k > 0, fmt::format("k({}) must be greater than 0", k))
+        k = std::min(k, GetNumElements());
+
+        std::shared_lock lock_global(rw_mutex_);
+
+        // check search parameters
+        auto params = HnswSearchParameters::FromJson(parameters);
+
+        // perform search
+        int64_t original_k = k;
+        std::priority_queue<std::pair<float, LabelType>> results;
+        double time_cost;
+        try {
+            Timer t(time_cost);
+            if (use_conjugate_graph_ and params.use_conjugate_graph_search) {
+                k = std::max(k, LOOK_AT_K);
+            }
+            results = alg_hnsw_->searchKnn((const void*)(vector),
+                                           k,
+                                           std::max(params.ef_search, k),
+                                           filter_ptr,
+                                           params.skip_ratio,
+                                           discard);
+        } catch (const std::runtime_error& e) {
+            LOG_ERROR_AND_RETURNS(ErrorType::INTERNAL_ERROR,
+                                  "failed to perofrm knn_search(internalError): ",
+                                  e.what());
+        }
+
+        // update stats
+        {
+            std::lock_guard<std::mutex> lock(stats_mutex_);
+            result_queues_[STATSTIC_KNN_TIME].Push(static_cast<float>(time_cost));
+        }
+
+        // return result
+        auto result = Dataset::Make();
+        if (results.empty()) {
+            result->Dim(0)->NumElements(1);
+            return result;
+        }
+
+        // perform conjugate graph enhancement
+        if (use_conjugate_graph_ and params.use_conjugate_graph_search) {
+            std::shared_lock lock(rw_mutex_);
+            time_cost = 0;
+            Timer t(time_cost);
+
+            auto func = [this, vector](int64_t label) {
+                return this->alg_hnsw_->getDistanceByLabel(label, vector);
+            };
+            conjugate_graph_->EnhanceResult(results, func);
+            k = original_k;
+        }
+
+        // return result
+        while (results.size() > k) {
+            results.pop();
+        }
+
+        result->Dim(static_cast<int64_t>(results.size()))
+            ->NumElements(1)
+            ->Owner(true, allocator_.get());
+
+        auto* ids = (int64_t*)allocator_->Allocate(sizeof(int64_t) * results.size());
+        result->Ids(ids);
+        auto* dists = (float*)allocator_->Allocate(sizeof(float) * results.size());
+        result->Distances(dists);
+
+        for (auto j = static_cast<int64_t>(results.size() - 1); j >= 0; --j) {
+            dists[j] = results.top().first;
+            ids[j] = results.top().second;
+            filter_ptr->EntryPoint(ids[j]);
             results.pop();
         }
 
