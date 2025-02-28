@@ -44,6 +44,7 @@
 #include "vsag/errors.h"
 #include "vsag/index.h"
 #include "vsag/readerset.h"
+#include "vsag/discard.h"
 
 namespace vsag {
 
@@ -105,7 +106,17 @@ public:
     KnnSearch(const DatasetPtr& query,
               int64_t k,
               const std::string& parameters,
-              const FilterPtr& filter) const override {
+              const FilterPtr& filter,
+              vsag::DiscardPtr discard = nullptr) const override {
+        SAFE_CALL(return this->knn_search(query, k, parameters, filter));
+    }
+
+    tl::expected<DatasetPtr, Error>
+    KnnSearchNext(const DatasetPtr& query,
+              int64_t k,
+              const std::string& parameters,
+              const FilterPtr& filter,
+              vsag::DiscardPtr discard = nullptr) const override {
         SAFE_CALL(return this->knn_search(query, k, parameters, filter));
     }
 
@@ -263,7 +274,15 @@ private:
     knn_search(const DatasetPtr& query,
                int64_t k,
                const std::string& parameters,
-               const FilterPtr filter_ptr) const;
+               const FilterPtr filter_ptr,
+               DiscardPtr discard = nullptr) const;
+
+    tl::expected<DatasetPtr, Error>
+    knn_search_next(const DatasetPtr& query,
+                    int64_t k,
+                    const std::string& parameters,
+                    const FilterPtr filter_ptr,
+                    DiscardPtr discard = nullptr) const;
 
     template <typename FilterType>
     tl::expected<DatasetPtr, Error>

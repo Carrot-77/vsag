@@ -41,13 +41,13 @@ option (ENABLE_CCACHE "Whether to open ccache" OFF)
 option (ENABLE_INTEL_MKL "Enable intel-mkl (x86 platform only)" ON)
 option (ENABLE_CXX11_ABI "Use CXX11 ABI" ON)
 option (ENABLE_LIBCXX "Use libc++ instead of libstdc++" OFF) # only support in clang
-option (ENABLE_TOOLS "Whether compile vsag tools" ON)
+option (ENABLE_TOOLS "Whether compile vsag tools" OFF)
 option (ENABLE_EXAMPLES "Whether compile examples" ON)
-option (ENABLE_TESTS "Whether compile vsag tests" ON)
+option (ENABLE_TESTS "Whether compile vsag tests" OFF)
 option (DISABLE_SSE_FORCE "Force disable sse and higher instructions" OFF)
-option (DISABLE_AVX_FORCE "Force disable avx and higher instructions" OFF)
-option (DISABLE_AVX2_FORCE "Force disable avx2 and higher instructions" OFF)
-option (DISABLE_AVX512_FORCE "Force disable avx512 instructions" OFF)
+option (DISABLE_AVX_FORCE "Force disable avx and higher instructions" ON)
+option (DISABLE_AVX2_FORCE "Force disable avx2 and higher instructions" ON)
+option (DISABLE_AVX512_FORCE "Force disable avx512 instructions" ON)
 
 
 if (ENABLE_CXX11_ABI)
