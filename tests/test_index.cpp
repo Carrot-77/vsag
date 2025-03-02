@@ -377,6 +377,8 @@ public:
         return valid_ratio_;
     }
 
+    void EntryPoint(int64_t id) const override {}
+
 private:
     std::function<bool(int64_t)> filter_func_{nullptr};
     float valid_ratio_{1.0F};

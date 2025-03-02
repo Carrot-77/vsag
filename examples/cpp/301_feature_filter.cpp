@@ -96,6 +96,9 @@ main(int argc, char** argv) {
         ValidRatio() const override {
             return 0.618f;
         }
+        void EntryPoint(int64_t id) const override {
+            //do nothing
+        }
     };
     auto filter_object = std::make_shared<MyFilter>();
 

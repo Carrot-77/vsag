@@ -412,11 +412,111 @@ HierarchicalNSW::searchBaseLayer(InnerIdType ep_id, const void* data_point, int 
 
 template <bool has_deletions, bool collect_metrics>
 MaxHeap
+HierarchicalNSW::searchBaseLayerSTNext(const void* data_point,
+                                   size_t ef,
+                                   const vsag::FilterPtr is_id_allowed,
+                                   const float skip_ratio,
+                                   vsag::DiscardPtr discard) const {
+    vsag::LinearCongruentialGenerator generator;
+    VisitedListPtr vl = visited_list_pool_->getFreeVisitedList();
+    vl_type visited_array_tag = vl->curV;
+
+    MaxHeap top_candidates(allocator_);
+    MaxHeap candidate_set(allocator_);
+
+    float valid_ratio = is_id_allowed ? is_id_allowed->ValidRatio() : 1.0F;
+    float skip_threshold = (1 - valid_ratio) * skip_ratio;
+
+    float lower_bound = 0.0;
+    if (discard != nullptr) {
+        while (not discard->Empty()) {
+            int64_t cur_inner_id = discard->GetTopID();
+            float cur_dist = discard->GetTopDist();
+            top_candidates.emplace(cur_dist, cur_inner_id);
+            candidate_set.emplace(-cur_dist, cur_inner_id);
+            lower_bound = std::max(lower_bound, cur_dist);
+            discard->PopDiscard();
+        }
+    }
+
+
+    while (not candidate_set.empty()) {
+        std::pair<float, InnerIdType> current_node_pair = candidate_set.top();
+
+        if ((-current_node_pair.first) > lower_bound &&
+            (top_candidates.size() == ef || (!is_id_allowed && !has_deletions))) {
+            break;
+        }
+        candidate_set.pop();
+
+        InnerIdType current_node_id = current_node_pair.second;
+        auto link_data = getLinklistAtLevelWithLock(current_node_id, 0);
+        int* data = (int*)link_data.get();
+        size_t size = getListCount((linklistsizeint*)data);
+        //                bool cur_node_deleted = isMarkedDeleted(current_node_id);
+        if (collect_metrics) {
+            metric_hops_++;
+            metric_distance_computations_ += size;
+        }
+
+        auto vector_data_ptr = data_level0_memory_->GetElementPtr((*(data + 1)), offset_data_);
+#ifdef ENABLE_SSE
+        vsag::PrefetchLines(vector_data_ptr, data_size_);
+        _mm_prefetch((char*)(data + 2), _MM_HINT_T0);
+#endif
+
+        for (size_t j = 1; j <= size; j++) {
+            int candidate_id = *(data + j);
+            size_t pre_l = std::min(j, size - 2);
+            if (pre_l + prefetch_jump_code_size_ <= size) {
+                vector_data_ptr = data_level0_memory_->GetElementPtr(
+                    (*(data + pre_l + prefetch_jump_code_size_)), offset_data_);
+#ifdef ENABLE_SSE
+                vsag::PrefetchLines(vector_data_ptr, data_size_);
+#endif
+            }
+            if (is_id_allowed && not candidate_set.empty() &&
+                not is_id_allowed->CheckValid(getExternalLabel(candidate_id))) {
+                continue;
+            } // 之前找过就不要了
+            char* currObj1 = getDataByInternalId(candidate_id);
+            float dist = fstdistfunc_(data_point, currObj1, dist_func_param_);
+            if (top_candidates.size() < ef || lower_bound > dist) {
+                candidate_set.emplace(-dist, candidate_id);
+                vector_data_ptr = data_level0_memory_->GetElementPtr(candidate_set.top().second,
+                                                                     offsetLevel0_);
+#ifdef ENABLE_SSE
+                _mm_prefetch(vector_data_ptr, _MM_HINT_T0);
+#endif
+                if ((!has_deletions || !isMarkedDeleted(candidate_id)) &&
+                    ((!is_id_allowed) ||
+                     is_id_allowed->CheckValid(getExternalLabel(candidate_id))))
+                    top_candidates.emplace(dist, candidate_id);
+
+                if (top_candidates.size() > ef)
+                    top_candidates.pop();
+
+                if (not top_candidates.empty())
+                    lower_bound = top_candidates.top().first;
+            } else if (discard != nullptr && is_id_allowed) {
+                discard->AddDiscardNode(dist, candidate_id);
+            }
+            is_id_allowed->EntryPoint(candidate_id);
+        }
+    }
+
+    visited_list_pool_->releaseVisitedList(vl);
+    return top_candidates;
+}
+
+template <bool has_deletions, bool collect_metrics>
+MaxHeap
 HierarchicalNSW::searchBaseLayerST(InnerIdType ep_id,
                                    const void* data_point,
                                    size_t ef,
                                    const vsag::FilterPtr is_id_allowed,
-                                   const float skip_ratio) const {
+                                   const float skip_ratio,
+                                   vsag::DiscardPtr discard) const {
     vsag::LinearCongruentialGenerator generator;
     VisitedListPtr vl = visited_list_pool_->getFreeVisitedList();
     vl_type* visited_array = vl->mass;
@@ -508,6 +608,8 @@ HierarchicalNSW::searchBaseLayerST(InnerIdType ep_id,
 
                     if (not top_candidates.empty())
                         lower_bound = top_candidates.top().first;
+                } else if (discard != nullptr && is_id_allowed) {
+                    discard->AddDiscardNode(dist, candidate_id);
                 }
             }
         }
@@ -1417,7 +1519,8 @@ HierarchicalNSW::searchKnn(const void* query_data,
                            size_t k,
                            uint64_t ef,
                            const vsag::FilterPtr is_id_allowed,
-                           const float skip_ratio) const {
+                           const float skip_ratio,
+                           vsag::DiscardPtr discard) const {
     std::shared_lock resize_lock(resize_mutex_);
     std::priority_queue<std::pair<float, LabelType>> result;
     if (cur_element_count_ == 0)
@@ -1425,6 +1528,14 @@ HierarchicalNSW::searchKnn(const void* query_data,
 
     std::shared_ptr<float[]> normalize_query;
     normalizeVector(query_data, normalize_query);
+    MaxHeap top_candidates(allocator_);
+    if (discard != NULL && discard->GetAddTime() != 0) {
+        if (discard->Empty())
+            return result;
+        top_candidates = searchBaseLayerSTNext<false, true>(
+            query_data, std::max(ef, k), is_id_allowed, skip_ratio, discard);
+    } else {
+    // 这里少一个锁进
     int64_t currObj;
     {
         std::shared_lock data_loc(max_level_mutex_);
@@ -1461,17 +1572,22 @@ HierarchicalNSW::searchKnn(const void* query_data,
         }
     }
 
-    MaxHeap top_candidates(allocator_);
 
     if (num_deleted_ == 0) {
         top_candidates = searchBaseLayerST<false, true>(
-            currObj, query_data, std::max(ef, k), is_id_allowed, skip_ratio);
+            currObj, query_data, std::max(ef, k), is_id_allowed, skip_ratio, discard);
     } else {
         top_candidates = searchBaseLayerST<true, true>(
-            currObj, query_data, std::max(ef, k), is_id_allowed, skip_ratio);
+            currObj, query_data, std::max(ef, k), is_id_allowed, skip_ratio, discard);
+    }
+    // 缩进
     }
 
     while (top_candidates.size() > k) {
+        if (discard != nullptr) {
+            std::pair<float, InnerIdType> curr = top_candidates.top();
+            discard->AddDiscardNode(curr.first, curr.second);
+        }
         top_candidates.pop();
     }
     while (not top_candidates.empty()) {
@@ -1479,6 +1595,7 @@ HierarchicalNSW::searchKnn(const void* query_data,
         result.emplace(rez.first, getExternalLabel(rez.second));
         top_candidates.pop();
     }
+    discard->AddOneTime();
     return result;
 }
 
@@ -1575,7 +1692,8 @@ HierarchicalNSW::searchBaseLayerST<false, false>(InnerIdType ep_id,
                                                  const void* data_point,
                                                  size_t ef,
                                                  const vsag::FilterPtr is_id_allowed,
-                                                 const float skip_ratio) const;
+                                                 const float skip_ratio,
+                                                 vsag::DiscardPtr discard = nullptr) const;
 
 template MaxHeap
 HierarchicalNSW::searchBaseLayerST<false, false>(InnerIdType ep_id,
