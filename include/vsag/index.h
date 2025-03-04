@@ -31,6 +31,7 @@
 #include "vsag/filter.h"
 #include "vsag/index_features.h"
 #include "vsag/readerset.h"
+#include "vsag/discard.h"
 
 namespace vsag {
 
@@ -166,7 +167,8 @@ public:
     KnnSearch(const DatasetPtr& query,
               int64_t k,
               const std::string& parameters,
-              const FilterPtr& filter) const {
+              const FilterPtr& filter,
+              vsag::DiscardPtr discard = nullptr) const {
         throw std::runtime_error("Index doesn't support new filter");
     }
 

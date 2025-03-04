@@ -200,7 +200,8 @@ tl::expected<DatasetPtr, Error>
 HNSW::knn_search(const DatasetPtr& query,
                  int64_t k,
                  const std::string& parameters,
-                 const FilterPtr filter_ptr) const {
+                 const FilterPtr filter_ptr,
+                 DiscardPtr discard) const {
 #ifndef ENABLE_TESTS
     SlowTaskTimer t_total("hnsw knnsearch", 20);
 #endif
@@ -244,7 +245,8 @@ HNSW::knn_search(const DatasetPtr& query,
                                            k,
                                            std::max(params.ef_search, k),
                                            filter_ptr,
-                                           params.skip_ratio);
+                                           params.skip_ratio,
+                                           discard);
         } catch (const std::runtime_error& e) {
             LOG_ERROR_AND_RETURNS(ErrorType::INTERNAL_ERROR,
                                   "failed to perofrm knn_search(internalError): ",
@@ -294,6 +296,7 @@ HNSW::knn_search(const DatasetPtr& query,
         for (auto j = static_cast<int64_t>(results.size() - 1); j >= 0; --j) {
             dists[j] = results.top().first;
             ids[j] = results.top().second;
+            filter_ptr->EntryPoint(ids[j]);
             results.pop();
         }
 
