@@ -27,6 +27,7 @@
 #include "vsag/dataset.h"
 #include "vsag/errors.h"
 #include "vsag/expected.hpp"
+#include "vsag/discard.h"
 
 namespace hnswlib {
 
@@ -43,7 +44,8 @@ public:
               size_t k,
               size_t ef,
               const vsag::FilterPtr is_id_allowed = nullptr,
-              float skip_ratio = 0.9f) const = 0;
+              float skip_ratio = 0.9f,
+              vsag::DiscardPtr discard = nullptr) const = 0;
 
     virtual std::priority_queue<std::pair<dist_t, LabelType>>
     searchRange(const void* query_data,
