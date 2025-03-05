@@ -49,6 +49,9 @@ public:
         return 1.0f;  // (default) all vectors is valid
     }
 
+    virtual void
+    EntryPoint(int64_t id) const = 0;
+
     /**
       * @brief Get the distribution of pre-filter
       * 
