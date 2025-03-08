@@ -509,7 +509,6 @@ HierarchicalNSW::searchBaseLayerSTNext(const void* data_point,
                 } else if (discard != nullptr && is_id_allowed && is_id_allowed->CheckValid(getExternalLabel(candidate_id))) {
                     discard->AddDiscardNode(dist, candidate_id);
                 }
-                is_id_allowed->EntryPoint(getExternalLabel(candidate_id));
             }
         }
     }
