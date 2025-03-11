@@ -33,6 +33,7 @@
 #include "../../default_allocator.h"
 #include "hnswlib.h"
 #include "visited_list_pool.h"
+#include "vsag/iterator_context.h"
 
 namespace hnswlib {
 using tableint = vsag::InnerIdType;
@@ -1450,7 +1451,8 @@ public:
               size_t k,
               uint64_t ef,
               const vsag::FilterPtr is_id_allowed = nullptr,
-              const float skip_ratio = 0.9f) const override {
+              const float skip_ratio = 0.9f,
+              vsag::IteratorContextPtr* iter_ctx = nullptr) const override {
         std::priority_queue<std::pair<float, LabelType>> result;
         if (cur_element_count_ == 0)
             return result;

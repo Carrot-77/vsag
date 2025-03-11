@@ -49,7 +49,9 @@ public:
     KnnSearch(const DatasetPtr& query,
               int64_t k,
               const std::string& parameters,
-              const std::function<bool(int64_t)>& filter) const;
+              const std::function<bool(int64_t)>& filter,
+              vsag::IteratorContextPtr* filter_ctx = nullptr,
+              bool is_iter_filter = false) const;
 
     tl::expected<DatasetPtr, Error>
     RangeSearch(const DatasetPtr& query,
@@ -143,7 +145,8 @@ private:
     search_one_graph(const float* query,
                      const GraphInterfacePtr& graph,
                      const FlattenInterfacePtr& flatten,
-                     InnerSearchParam& inner_search_param) const;
+                     InnerSearchParam& inner_search_param,
+                     vsag::IteratorContextPtr* iter_ctx = nullptr) const;
     void
     serialize_basic_info(StreamWriter& writer) const;
 

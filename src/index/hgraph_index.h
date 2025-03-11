@@ -20,6 +20,8 @@
 #include "index_common_param.h"
 #include "typing.h"
 #include "vsag/index.h"
+#include "vsag/iterator_context.h"
+#include "iterator_filter.h"
 
 namespace vsag {
 class HGraphIndex : public Index {
@@ -59,6 +61,18 @@ public:
               const std::string& parameters,
               const std::function<bool(int64_t)>& filter) const override {
         SAFE_CALL(return this->hgraph_->KnnSearch(query, k, parameters, filter));
+    }
+
+    tl::expected<DatasetPtr, Error>
+    KnnSearch(const DatasetPtr& query,
+              int64_t k,
+              const std::string& parameters,
+              const FilterPtr& filter,
+              vsag::IteratorContextPtr* iter_ctx) const override {
+        auto new_filter = [filter](int64_t id) -> bool {
+            return filter->CheckValid(id);
+        };
+        SAFE_CALL(return this->hgraph_->KnnSearch(query, k, parameters, new_filter, iter_ctx, true));
     }
 
     tl::expected<DatasetPtr, Error>

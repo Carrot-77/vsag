@@ -38,10 +38,12 @@
 #include "data_cell/flatten_interface.h"
 #include "data_cell/graph_interface.h"
 #include "default_allocator.h"
+#include "index/iterator_filter.h"
 #include "prefetch.h"
 #include "simd/simd.h"
 #include "visited_list_pool.h"
 #include "vsag/dataset.h"
+#include "vsag/iterator_context.h"
 namespace hnswlib {
 using InnerIdType = vsag::InnerIdType;
 using linklistsizeint = unsigned int;
@@ -253,7 +255,8 @@ public:
                       const void* data_point,
                       size_t ef,
                       const vsag::FilterPtr is_id_allowed = nullptr,
-                      const float skip_ratio = 0.9f) const;
+                      const float skip_ratio = 0.9f,
+                      vsag::IteratorContextPtr* iter_ctx = nullptr) const;
 
     template <bool has_deletions, bool collect_metrics = false>
     MaxHeap
@@ -412,7 +415,8 @@ public:
               size_t k,
               uint64_t ef,
               const vsag::FilterPtr is_id_allowed = nullptr,
-              const float skip_ratio = 0.9f) const override;
+              const float skip_ratio = 0.9f,
+              vsag::IteratorContextPtr* iter_ctx = nullptr) const override;
 
     std::priority_queue<std::pair<float, LabelType>>
     searchRange(const void* query_data,
