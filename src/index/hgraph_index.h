@@ -20,6 +20,8 @@
 #include "index_common_param.h"
 #include "typing.h"
 #include "vsag/index.h"
+#include "vsag/iterator_context.h"
+#include "iterator_filter.h"
 
 namespace vsag {
 class HGraphIndex : public Index {
@@ -62,6 +64,18 @@ public:
     }
 
     tl::expected<DatasetPtr, Error>
+    KnnSearch(const DatasetPtr& query,
+              int64_t k,
+              const std::string& parameters,
+              const FilterPtr& filter,
+              vsag::IteratorContextPtr* iter_ctx) const override {
+        auto new_filter = [filter](int64_t id) -> bool {
+            return filter->CheckValid(id);
+        };
+        SAFE_CALL(return this->hgraph_->KnnSearch(query, k, parameters, new_filter, iter_ctx, true));
+    }
+
+    tl::expected<DatasetPtr, Error>
     RangeSearch(const DatasetPtr& query,
                 float radius,
                 const std::string& parameters,
@@ -96,6 +110,12 @@ public:
     CalcDistanceById(const float* vector, int64_t id) const override {
         SAFE_CALL(return this->hgraph_->CalculateDistanceById(vector, id));
     };
+
+    virtual tl::expected<void, Error>
+    GetMinAndMaxId(int64_t &min_id, int64_t &max_id) const override {
+        SAFE_CALL(return this->hgraph_->getMinAndMaxId(min_id, max_id));
+    };
+
 
     tl::expected<BinarySet, Error>
     Serialize() const override {
