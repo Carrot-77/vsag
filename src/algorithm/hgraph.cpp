@@ -25,6 +25,7 @@
 #include "empty_index_binary_set.h"
 #include "impl/pruning_strategy.h"
 #include "index/hgraph_index_zparameters.h"
+#include "index/iterator_filter.h"
 #include "logger.h"
 
 namespace vsag {
@@ -115,7 +116,9 @@ tl::expected<DatasetPtr, Error>
 HGraph::KnnSearch(const DatasetPtr& query,
                   int64_t k,
                   const std::string& parameters,
-                  const std::function<bool(int64_t)>& filter) const {
+                  const std::function<bool(int64_t)>& filter,
+                  vsag::IteratorContextPtr* iter_ctx,
+                  bool is_iter_filter) const {
     std::unique_ptr<BitsetOrCallbackFilter> ft = nullptr;
     if (filter != nullptr) {
         ft = std::make_unique<BitsetOrCallbackFilter>(filter);
@@ -132,19 +135,31 @@ HGraph::KnnSearch(const DatasetPtr& query,
         // check query vector
         CHECK_ARGUMENT(query->GetNumElements() == 1, "query dataset should contain 1 vector only");
 
+        auto params = HGraphSearchParameters::FromJson(parameters);
+
+        if (is_iter_filter && iter_ctx == nullptr && *iter_ctx == nullptr) {
+            auto cur_count = this->bottom_graph_->TotalCount();
+            auto filter_context = std::make_shared<IteratorFilterContext>();
+            filter_context->init(cur_count, params.ef_search, std::shared_ptr<Allocator>(allocator_));
+            *iter_ctx = filter_context;
+        }
+
         InnerSearchParam search_param;
         search_param.ep_ = this->entry_point_id_;
         search_param.ef_ = 1;
         search_param.is_id_allowed_ = nullptr;
-        for (auto i = static_cast<int64_t>(this->route_graphs_.size() - 1); i >= 0; --i) {
+        if (iter_ctx != nullptr && !(*iter_ctx)->IsFirstUsed()) {
+            // for Second and subsequent iterations
+
+        } else {
+            for (auto i = static_cast<int64_t>(this->route_graphs_.size() - 1); i >= 0; --i) {
             auto result = this->search_one_graph(query->GetFloat32Vectors(),
                                                  this->route_graphs_[i],
                                                  this->basic_flatten_codes_,
                                                  search_param);
             search_param.ep_ = result.top().second;
+            }
         }
-
-        auto params = HGraphSearchParameters::FromJson(parameters);
 
         search_param.ef_ = params.ef_search;
         search_param.is_id_allowed_ = ft.get();
@@ -158,6 +173,10 @@ HGraph::KnnSearch(const DatasetPtr& query,
         }
 
         while (search_result.size() > k) {
+            if (iter_ctx != nullptr) {
+                std::pair<float, InnerIdType> curr = search_result.top();
+                (*iter_ctx)->AddDiscardNode(curr.first, curr.second);
+            }
             search_result.pop();
         }
 
@@ -181,7 +200,13 @@ HGraph::KnnSearch(const DatasetPtr& query,
         for (auto j = static_cast<int64_t>(search_result.size() - 1); j >= 0; --j) {
             dists[j] = search_result.top().first;
             ids[j] = this->labels_.at(search_result.top().second);
+            if (iter_ctx != nullptr) {
+                (*iter_ctx)->SetPoint(search_result.top().second);
+            }
             search_result.pop();
+        }
+        if (iter_ctx != nullptr) {
+            (*iter_ctx)->SetOFFFirstUsed();
         }
         return std::move(dataset_results);
     } catch (const std::invalid_argument& e) {
@@ -346,7 +371,8 @@ MaxHeap
 HGraph::search_one_graph(const float* query,
                          const GraphInterfacePtr& graph,
                          const FlattenInterfacePtr& flatten,
-                         InnerSearchParam& inner_search_param) const {
+                         InnerSearchParam& inner_search_param,
+                          vsag::IteratorContextPtr* iter_ctx) const {
     auto visited_list = this->pool_->getFreeVisitedList();
 
     auto* visited_array = visited_list->mass;
@@ -361,19 +387,47 @@ HGraph::search_one_graph(const float* query,
     MaxHeap candidate_set(allocator_);
     MaxHeap cur_result(allocator_);
     float dist = 0.0F;
+    uint64_t ids_cnt = 1;
     auto lower_bound = std::numeric_limits<float>::max();
-    flatten->Query(&dist, computer, &ep, 1);
-    if (not is_id_allowed || (*is_id_allowed)(get_label_by_id(ep))) {
-        cur_result.emplace(dist, ep);
-        lower_bound = cur_result.top().first;
-    }
-    if constexpr (mode == RANGE_SEARCH_MODE) {
-        if (dist > inner_search_param.radius_) {
-            cur_result.pop();
+    if (iter_ctx != nullptr && !(*iter_ctx)->IsFirstUsed()) {
+        ids_cnt = (*iter_ctx)->GetDiscardElementNum();
+        Vector<InnerIdType> ids(ids_cnt, allocator_);
+        Vector<float> dists(ids_cnt, allocator_);
+        while (not(*iter_ctx)->Empty()) {
+            int64_t cur_inner_id = (*iter_ctx)->GetTopID();
+            float cur_dist = (*iter_ctx)->GetTopDist();
+            ids.push_back(cur_inner_id);
+            dists.push_back(cur_dist);
+            lower_bound = std::max(lower_bound, cur_dist);
+            (*iter_ctx)->PopDiscard();
         }
+        flatten->Query(dists.data(), computer, ids.data(), ids_cnt);
+        for (int i = 0; i < ids_cnt; i++) {
+            if (not is_id_allowed || (*is_id_allowed)(get_label_by_id(ids[i]))) {
+                cur_result.emplace(dists[i], ids[i]);
+                candidate_set.emplace(-dists[i], ids[i]);
+                visited_array[ids[i]] = visited_array_tag;
+            }
+            if constexpr (mode == RANGE_SEARCH_MODE) {
+                if (dists[i] > inner_search_param.radius_) {
+                    cur_result.pop();
+                }
+            }
+        }
+    } else {
+        flatten->Query(&dist, computer, &ep, 1);
+        if (not is_id_allowed || (*is_id_allowed)(get_label_by_id(ep))) {
+            cur_result.emplace(dist, ep);
+            lower_bound = cur_result.top().first;
+        }
+        if constexpr (mode == RANGE_SEARCH_MODE) {
+            if (dist > inner_search_param.radius_) {
+                cur_result.pop();
+            }
+        }
+        candidate_set.emplace(-dist, ep);
+        visited_array[ep] = visited_array_tag;
     }
-    candidate_set.emplace(-dist, ep);
-    visited_array[ep] = visited_array_tag;
 
     Vector<InnerIdType> neighbors(allocator_);
     Vector<InnerIdType> to_be_visited(graph->MaximumDegree(), allocator_);
@@ -427,6 +481,9 @@ HGraph::search_one_graph(const float* query,
                 (mode == RANGE_SEARCH_MODE && dist <= inner_search_param.radius_)) {
                 candidate_set.emplace(-dist, to_be_visited[i]);
                 flatten->Prefetch(candidate_set.top().second);
+                if (iter_ctx != nullptr && !(*iter_ctx)->CheckPoint(to_be_visited[i])) {
+                    continue;
+                }
 
                 if (not is_id_allowed || (*is_id_allowed)(get_label_by_id(to_be_visited[i]))) {
                     cur_result.emplace(dist, to_be_visited[i]);
@@ -435,6 +492,10 @@ HGraph::search_one_graph(const float* query,
                 if constexpr (mode == KNN_SEARCH_MODE) {
                     if (cur_result.size() > ef) {
                         cur_result.pop();
+                        if (iter_ctx != nullptr) {
+                            auto cur_node_pair = candidate_set.top();
+                            (*iter_ctx)->AddDiscardNode(cur_node_pair.first, cur_node_pair.second);
+                        }
                     }
                 }
 

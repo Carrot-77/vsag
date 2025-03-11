@@ -37,6 +37,12 @@ target_link_libraries(304_feature_enhance_graph vsag)
 add_executable(305_feature_update 305_feature_update.cpp)
 target_link_libraries(305_feature_update vsag)
 
+add_executable(309_feature_hnsw_iter_filter 309_feature_hnsw_iter_filter.cpp)
+target_link_libraries(309_feature_hnsw_iter_filter vsag)
+
+add_executable(310_feature_hgraph_iter_filter 310_feature_hgraph_iter_filter.cpp)
+target_link_libraries(310_feature_hgraph_iter_filter vsag)
+
 add_executable (401_persistent_kv 401_persistent_kv.cpp)
 target_link_libraries (401_persistent_kv vsag)
 
