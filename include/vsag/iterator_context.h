@@ -15,17 +15,13 @@
 
 #pragma once
 #include <memory>
-
-#include "vsag/errors.h"
-#include "vsag/expected.hpp"
-
 namespace vsag {
 
 class IteratorContext {
 public:
     virtual ~IteratorContext() = default;
-    virtual tl::expected<void, Error>
-    AddDiscardNode(float dis, uint32_t id) {throw std::runtime_error("Index not support delete vector");};
+    virtual void
+    AddDiscardNode(float dis, uint32_t id) {};
     virtual int64_t
     GetTopID() { return 0; };
     virtual float

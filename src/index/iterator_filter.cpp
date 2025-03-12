@@ -48,23 +48,16 @@ IteratorFilterContext::init(InnerIdType max_size,
     return {};
 }
 
-tl::expected<void, Error>
+void
 IteratorFilterContext::AddDiscardNode(float dis, uint32_t id) {
-    //try {
-        if (discard_->size() >= ef_search_*2) {
-            if (discard_->top().first > dis) {
-                discard_->pop();
-                discard_->emplace(dis, id);
-            }
-        } else {
+    if (discard_->size() >= ef_search_*2) {
+        if (discard_->top().first > dis) {
+            discard_->pop();
             discard_->emplace(dis, id);
         }
-    // } catch (const std::bad_alloc& e) {
-    //     LOG_ERROR_AND_RETURNS(ErrorType::NO_ENOUGH_MEMORY,
-    //                           "ctx failed to add discard node(not enough memory): ",
-    //                           e.what());
-    // }
-    return {};
+    } else {
+        discard_->emplace(dis, id);
+    }
 }
 
 int64_t

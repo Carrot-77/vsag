@@ -37,7 +37,7 @@ public:
 
     tl::expected<void, Error>
     init(InnerIdType max_size, int64_t ef_search, Allocator* allocator);
-    tl::expected<void, Error>
+    void
     AddDiscardNode(float dis, uint32_t id) override;
 
     virtual int64_t
