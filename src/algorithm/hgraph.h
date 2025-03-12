@@ -98,6 +98,9 @@ public:
     tl::expected<float, Error>
     CalculateDistanceById(const float* vector, int64_t id) const;
 
+    tl::expected<void, Error>
+    getMinAndMaxId(int64_t &min_id, int64_t &max_id) const;
+
     bool
     CheckFeature(IndexFeature feature) const;
 

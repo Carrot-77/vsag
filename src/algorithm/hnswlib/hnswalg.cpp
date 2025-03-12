@@ -178,6 +178,16 @@ HierarchicalNSW::getDistanceByLabel(LabelType label, const void* data_point) {
     return dist;
 }
 
+void HierarchicalNSW::getMinAndMaxId(int64_t &min_id, int64_t &max_id) {
+    min_id = INT64_MAX;
+    max_id = INT64_MIN;
+    std::shared_lock lock_table(label_lookup_lock_);
+    for (auto it = label_lookup_.begin(); it != label_lookup_.end(); ++it) {
+        max_id = it->first > max_id ? it->first : max_id;
+        min_id = it->first < min_id ? it->first : min_id;
+    }
+}
+
 tl::expected<vsag::DatasetPtr, vsag::Error>
 HierarchicalNSW::getBatchDistanceByLabel(const int64_t* ids,
                                          const void* data_point,

@@ -332,6 +332,11 @@ public:
         throw std::runtime_error("Index doesn't support get distance by id");
     };
 
+    virtual tl::expected<void, Error>
+    GetMinAndMaxId(int64_t &min_id, int64_t &max_id) const {
+        throw std::runtime_error("Index doesn't support get distance by id");
+    };
+
     /**
      * @brief Checks if the specified feature is supported by the index.
      *

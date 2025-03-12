@@ -263,6 +263,11 @@ public:
         return dist;
     }
 
+    void
+    getMinAndMaxId(int64_t &min_id, int64_t &max_id) override {
+        // donothing
+    }
+
     tl::expected<vsag::DatasetPtr, vsag::Error>
     getBatchDistanceByLabel(const int64_t* ids, const void* data_point, int64_t count) override {
         std::unique_lock<std::mutex> lock_table(label_lookup_lock);

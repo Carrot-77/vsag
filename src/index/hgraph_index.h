@@ -111,6 +111,12 @@ public:
         SAFE_CALL(return this->hgraph_->CalculateDistanceById(vector, id));
     };
 
+    virtual tl::expected<void, Error>
+    GetMinAndMaxId(int64_t &min_id, int64_t &max_id) const override {
+        SAFE_CALL(return this->hgraph_->getMinAndMaxId(min_id, max_id));
+    };
+
+
     tl::expected<BinarySet, Error>
     Serialize() const override {
         SAFE_CALL(return this->hgraph_->Serialize());

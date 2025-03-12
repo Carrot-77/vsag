@@ -72,6 +72,9 @@ public:
     virtual float
     getDistanceByLabel(LabelType label, const void* data_point) = 0;
 
+    virtual void
+    getMinAndMaxId(int64_t &min_id, int64_t &max_id) = 0;
+
     virtual tl::expected<vsag::DatasetPtr, vsag::Error>
     getBatchDistanceByLabel(const int64_t* ids, const void* data_point, int64_t count) = 0;
 
