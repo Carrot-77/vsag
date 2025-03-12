@@ -20,7 +20,7 @@
 int
 main(int argc, char** argv) {
     /******************* Prepare Base Dataset *****************/
-    int64_t num_vectors = 10000;
+    int64_t num_vectors = 100000;
     int64_t dim = 128;
     auto ids = new int64_t[num_vectors];
     auto vectors = new float[dim * num_vectors];
@@ -87,7 +87,6 @@ main(int argc, char** argv) {
     auto query = vsag::Dataset::Make();
     query->NumElements(1)->Dim(dim)->Float32Vectors(query_vector)->Owner(true);
 
-    vsag::IteratorContextPtr filter_ctx = nullptr;
     /******************* Prepare Filter Object *****************/
     class MyFilter : public vsag::Filter {
     public:
@@ -135,60 +134,68 @@ main(int argc, char** argv) {
         std::cerr << "Search Error: " << knn_result0_1.error().message << std::endl;
     }
 
+    auto time_start = std::chrono::steady_clock::now();
+    for (int i = 0; i < 10000; i++) {
+    vsag::IteratorContextPtr filter_ctx = nullptr;
     /******************* Search And Print Result1 *****************/
-    auto time0 = std::chrono::steady_clock::now();
+    //auto time0 = std::chrono::steady_clock::now();
     auto knn_result =
         index->KnnSearch(query, topk, hnsw_search_parameters, filter_object, &filter_ctx);
-    auto time1 = std::chrono::steady_clock::now();
-    std::chrono::duration<double, std::milli> duration = time1 - time0;
-    std::cout << "knn_result1: " << duration.count() << std::endl;
+    // auto time1 = std::chrono::steady_clock::now();
+    // std::chrono::duration<double, std::milli> duration = time1 - time0;
+    // std::cout << "knn_result1: " << duration.count() << std::endl;
 
-    if (knn_result.has_value()) {
-        auto result = knn_result.value();
-        std::cout << "results1: " << std::endl;
-        for (int64_t i = 0; i < result->GetDim(); ++i) {
-            std::cout << result->GetIds()[i] << ": " << result->GetDistances()[i] << std::endl;
-        }
-    } else {
-        std::cerr << "Search Error: " << knn_result.error().message << std::endl;
-    }
+    // if (knn_result.has_value()) {
+    //     auto result = knn_result.value();
+    //     std::cout << "results1: " << std::endl;
+    //     for (int64_t i = 0; i < result->GetDim(); ++i) {
+    //         std::cout << result->GetIds()[i] << ": " << result->GetDistances()[i] << std::endl;
+    //     }
+    // } else {
+    //     std::cerr << "Search Error: " << knn_result.error().message << std::endl;
+    // }
 
     /******************* Search And Print Result2 *****************/
-    auto time3 = std::chrono::steady_clock::now();
+    //auto time3 = std::chrono::steady_clock::now();
     auto knn_result2 =
         index->KnnSearch(query, topk, hnsw_search_parameters, filter_object, &filter_ctx);
 
-    auto time4 = std::chrono::steady_clock::now();
-    duration = time4 - time3;
-    std::cout << "knn_result2: " << duration.count() << std::endl;
+    // auto time4 = std::chrono::steady_clock::now();
+    // duration = time4 - time3;
+    // std::cout << "knn_result2: " << duration.count() << std::endl;
 
-    if (knn_result2.has_value()) {
-        auto result = knn_result2.value();
-        std::cout << "results2: " << std::endl;
-        for (int64_t i = 0; i < result->GetDim(); ++i) {
-            std::cout << result->GetIds()[i] << ": " << result->GetDistances()[i] << std::endl;
-        }
-    } else {
-        std::cerr << "Search Error: " << knn_result2.error().message << std::endl;
-    }
+    // if (knn_result2.has_value()) {
+    //     auto result = knn_result2.value();
+    //     std::cout << "results2: " << std::endl;
+    //     for (int64_t i = 0; i < result->GetDim(); ++i) {
+    //         std::cout << result->GetIds()[i] << ": " << result->GetDistances()[i] << std::endl;
+    //     }
+    // } else {
+    //     std::cerr << "Search Error: " << knn_result2.error().message << std::endl;
+    // }
 
     /******************* Search And Print Result3 *****************/
-    auto time5 = std::chrono::steady_clock::now();
-    auto knn_result3 =
-        index->KnnSearch(query, topk, hnsw_search_parameters, filter_object, &filter_ctx);
-    auto time6 = std::chrono::steady_clock::now();
-    duration = time6 - time5;
-    std::cout << "knn_result3: " << duration.count() << std::endl;
+    //auto time5 = std::chrono::steady_clock::now();
+    // auto knn_result3 =
+    //     index->KnnSearch(query, topk, hnsw_search_parameters, filter_object, &filter_ctx);
+    
+    // auto time6 = std::chrono::steady_clock::now();
+    // duration = time6 - time5;
+    // std::cout << "knn_result3: " << duration.count() << std::endl;
 
-    if (knn_result3.has_value()) {
-        auto result = knn_result3.value();
-        std::cout << "results3: " << std::endl;
-        for (int64_t i = 0; i < result->GetDim(); ++i) {
-            std::cout << result->GetIds()[i] << ": " << result->GetDistances()[i] << std::endl;
-        }
-    } else {
-        std::cerr << "Search Error: " << knn_result3.error().message << std::endl;
+    // if (knn_result3.has_value()) {
+    //     auto result = knn_result3.value();
+    //     std::cout << "results3: " << std::endl;
+    //     for (int64_t i = 0; i < result->GetDim(); ++i) {
+    //         std::cout << result->GetIds()[i] << ": " << result->GetDistances()[i] << std::endl;
+    //     }
+    // } else {
+    //     std::cerr << "Search Error: " << knn_result3.error().message << std::endl;
+    // }
     }
+    auto time_end = std::chrono::steady_clock::now();
+    std::cout << "knn_result2: " << (time_start - time_end).count() << std::endl;
+    //filter_ctx->PrintVisited();
 
     return 0;
 }
