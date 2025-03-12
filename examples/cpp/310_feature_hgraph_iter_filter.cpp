@@ -156,7 +156,7 @@ main(int argc, char** argv) {
         std::cerr << "Search Error: " << result0.error().message << std::endl;
     }
 
-    iter_ctx.reset();
+    //iter_ctx.reset();
     engine.Shutdown();
     return 0;
 }

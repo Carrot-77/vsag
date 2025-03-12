@@ -509,9 +509,6 @@ HierarchicalNSW::searchBaseLayerST(InnerIdType ep_id,
             }
             if (visited_array[candidate_id] != visited_array_tag) {
                 visited_array[candidate_id] = visited_array_tag;
-                // if (iter_ctx != nullptr && !(*iter_ctx)->CheckPoint(candidate_id)) {
-                //     continue;
-                // }
                 if (is_id_allowed && not candidate_set.empty() &&
                     generator.NextFloat() < skip_threshold &&
                     not is_id_allowed->CheckValid(getExternalLabel(candidate_id))) {

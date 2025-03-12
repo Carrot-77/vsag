@@ -36,7 +36,7 @@ public:
     ~IteratorFilterContext();
 
     tl::expected<void, Error>
-    init(InnerIdType max_size, int64_t ef_search, std::shared_ptr<Allocator> allocator);
+    init(InnerIdType max_size, int64_t ef_search, Allocator* allocator);
     tl::expected<void, Error>
     AddDiscardNode(float dis, uint32_t id) override;
 
@@ -62,7 +62,7 @@ public:
 private:
     int64_t ef_search_;
     bool is_first_used_;
-    std::shared_ptr<Allocator> allocator_;
+    Allocator *allocator_;
     VisitedListType* list_{nullptr};
     std::unique_ptr<std::priority_queue<std::pair<float, uint32_t>>> discard_;
 };

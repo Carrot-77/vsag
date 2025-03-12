@@ -28,7 +28,7 @@ IteratorFilterContext::~IteratorFilterContext() {
 tl::expected<void, Error>
 IteratorFilterContext::init(InnerIdType max_size,
                             int64_t ef_search,
-                            std::shared_ptr<Allocator> allocator) {
+                            Allocator* allocator) {
     if (ef_search == 0 || max_size == 0) {
         LOG_ERROR_AND_RETURNS(ErrorType::INVALID_ARGUMENT,
                               "failed to serialize: hnsw index is empty");

@@ -236,7 +236,7 @@ HNSW::knn_search(const DatasetPtr& query,
 
         if (is_iter_filter && iter_ctx != nullptr && *iter_ctx == nullptr) {
             auto filter_context = std::make_shared<IteratorFilterContext>();
-            filter_context->init(alg_hnsw_->getMaxElements(), params.ef_search, allocator_);
+            filter_context->init(alg_hnsw_->getMaxElements(), params.ef_search, allocator_.get());
             *iter_ctx = filter_context;
         }
 

@@ -140,7 +140,7 @@ HGraph::KnnSearch(const DatasetPtr& query,
         if (is_iter_filter && iter_ctx != nullptr && *iter_ctx == nullptr) {
             auto cur_count = this->bottom_graph_->TotalCount();
             auto filter_context = std::make_shared<IteratorFilterContext>();
-            filter_context->init(cur_count, params.ef_search, std::shared_ptr<Allocator>(allocator_));
+            filter_context->init(cur_count, params.ef_search, allocator_);
             *iter_ctx = filter_context;
         }
 
