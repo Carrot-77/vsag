@@ -137,7 +137,7 @@ HGraph::KnnSearch(const DatasetPtr& query,
 
         auto params = HGraphSearchParameters::FromJson(parameters);
 
-        if (is_iter_filter && iter_ctx == nullptr && *iter_ctx == nullptr) {
+        if (is_iter_filter && iter_ctx != nullptr && *iter_ctx == nullptr) {
             auto cur_count = this->bottom_graph_->TotalCount();
             auto filter_context = std::make_shared<IteratorFilterContext>();
             filter_context->init(cur_count, params.ef_search, std::shared_ptr<Allocator>(allocator_));
@@ -396,9 +396,12 @@ HGraph::search_one_graph(const float* query,
         while (not(*iter_ctx)->Empty()) {
             int64_t cur_inner_id = (*iter_ctx)->GetTopID();
             float cur_dist = (*iter_ctx)->GetTopDist();
-            ids.push_back(cur_inner_id);
-            dists.push_back(cur_dist);
-            lower_bound = std::max(lower_bound, cur_dist);
+            if (visited_array[cur_inner_id] != visited_array_tag && (*iter_ctx)->CheckPoint(cur_inner_id)) {
+                visited_array[cur_inner_id] = visited_array_tag;
+                ids.push_back(cur_inner_id);
+                dists.push_back(cur_dist);
+                lower_bound = std::max(lower_bound, cur_dist);
+            }
             (*iter_ctx)->PopDiscard();
         }
         flatten->Query(dists.data(), computer, ids.data(), ids_cnt);
@@ -491,11 +494,11 @@ HGraph::search_one_graph(const float* query,
 
                 if constexpr (mode == KNN_SEARCH_MODE) {
                     if (cur_result.size() > ef) {
-                        cur_result.pop();
-                        if (iter_ctx != nullptr) {
+                        if (iter_ctx != nullptr && (*iter_ctx)->CheckPoint(candidate_set.top().second)) {
                             auto cur_node_pair = candidate_set.top();
-                            (*iter_ctx)->AddDiscardNode(cur_node_pair.first, cur_node_pair.second);
+                            (*iter_ctx)->AddDiscardNode(-cur_node_pair.first, cur_node_pair.second);
                         }
+                        cur_result.pop();
                     }
                 }
 

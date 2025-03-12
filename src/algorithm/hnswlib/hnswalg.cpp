@@ -509,9 +509,9 @@ HierarchicalNSW::searchBaseLayerST(InnerIdType ep_id,
             }
             if (visited_array[candidate_id] != visited_array_tag) {
                 visited_array[candidate_id] = visited_array_tag;
-                if (iter_ctx != nullptr && !(*iter_ctx)->CheckPoint(candidate_id)) {
-                    continue;
-                }
+                // if (iter_ctx != nullptr && !(*iter_ctx)->CheckPoint(candidate_id)) {
+                //     continue;
+                // }
                 if (is_id_allowed && not candidate_set.empty() &&
                     generator.NextFloat() < skip_threshold &&
                     not is_id_allowed->CheckValid(getExternalLabel(candidate_id))) {
@@ -533,8 +533,9 @@ HierarchicalNSW::searchBaseLayerST(InnerIdType ep_id,
                         top_candidates.emplace(dist, candidate_id);
 
                     if (top_candidates.size() > ef) {
-                        if (iter_ctx != nullptr) {
-                            (*iter_ctx)->AddDiscardNode(dist, candidate_id);
+                        auto cur_node_pair = candidate_set.top();
+                        if (iter_ctx != nullptr && (*iter_ctx)->CheckPoint(cur_node_pair.second)) {
+                            (*iter_ctx)->AddDiscardNode(-cur_node_pair.first, cur_node_pair.second);
                         }
                         top_candidates.pop();
                     }
