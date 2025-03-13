@@ -521,18 +521,7 @@ HierarchicalNSW::searchBaseLayerST(InnerIdType ep_id,
                 }
                 float dist = 0;
                 char* currObj1 = getDataByInternalId(candidate_id);
-                if (iter_ctx != nullptr) {
-                    float dis = (*iter_ctx)->GetDistance(candidate_id);
-                    if (dis != -1) {
-                        dist = dis;
-                    } else {
-                        dist = fstdistfunc_(data_point, currObj1, dist_func_param_);
-                    }
-                } else {
-                    dist = fstdistfunc_(data_point, currObj1, dist_func_param_);
-                    if (iter_ctx != nullptr) 
-                        (*iter_ctx)->SetDistance(candidate_id, dist);
-                }
+                dist = fstdistfunc_(data_point, currObj1, dist_func_param_);
                 if (top_candidates.size() < ef || lower_bound > dist) {
                     candidate_set.emplace(-dist, candidate_id);
                     vector_data_ptr = data_level0_memory_->GetElementPtr(candidate_set.top().second,
@@ -551,9 +540,9 @@ HierarchicalNSW::searchBaseLayerST(InnerIdType ep_id,
                     }
 
                     if (top_candidates.size() > ef) {
-                        auto cur_node_pair = candidate_set.top();
+                        auto cur_node_pair = top_candidates.top();
                         if (iter_ctx != nullptr && (*iter_ctx)->CheckPoint(cur_node_pair.second)) {
-                            (*iter_ctx)->AddDiscardNode(-cur_node_pair.first, cur_node_pair.second);
+                            (*iter_ctx)->AddDiscardNode(cur_node_pair.first, cur_node_pair.second);
                         }
                         top_candidates.pop();
                     }

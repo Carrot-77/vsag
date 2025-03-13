@@ -40,14 +40,6 @@ public:
     CheckPoint(uint32_t id) {return false;};
     virtual int64_t
     GetDiscardElementNum() {return false;};
-    virtual void
-    SetVisited(uint32_t id) {}
-    virtual void
-    PrintVisited() {}
-    virtual void
-    SetDistance(uint32_t id, float distance) {};
-    virtual float
-    GetDistance(uint32_t id) {return  0;};
 };
 
 using IteratorContextPtr = std::shared_ptr<IteratorContext>;
