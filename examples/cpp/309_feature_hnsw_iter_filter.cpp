@@ -102,9 +102,9 @@ main(int argc, char** argv) {
     };
     auto filter_object = std::make_shared<MyFilter>();
 
-    /******************* Print Search Result All topK * 3 *****************/
+    /******************* Print Search Result All topK * 2 *****************/
     auto time7 = std::chrono::steady_clock::now();
-    auto knn_result0 = index->KnnSearch(query, topk * 3, hnsw_search_parameters, filter_object);
+    auto knn_result0 = index->KnnSearch(query, topk * 2, hnsw_search_parameters, filter_object);
     auto time8 = std::chrono::steady_clock::now();
     std::chrono::duration<double, std::milli> duration0 = time8 - time7;
     std::cout << "knn_result0: " << duration0.count() << std::endl;
