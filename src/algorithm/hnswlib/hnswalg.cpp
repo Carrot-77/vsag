@@ -1471,20 +1471,29 @@ HierarchicalNSW::searchKnn(const void* query_data,
     if (iter_ctx != nullptr && !(*iter_ctx)->IsFirstUsed()) {
         if ((*iter_ctx)->Empty())
             return result;
-        if ((*iter_ctx)->GetDiscardElementNum() >= k * 2) {
-            int cycle_time = 0;
-            int64_t discard_cnt = (*iter_ctx)->GetDiscardElementNum();
+        if (ef == 1) {
             while (!(*iter_ctx)->Empty()) {
-                if (cycle_time >= discard_cnt - k) {
-                    int64_t cur_inner_id = (*iter_ctx)->GetTopID();
-                    float cur_dist = (*iter_ctx)->GetTopDist();
-                    result.emplace(cur_dist, getExternalLabel(cur_inner_id));
-                }
-                cycle_time++;
+                int64_t cur_inner_id = (*iter_ctx)->GetTopID();
+                float cur_dist = (*iter_ctx)->GetTopDist();
+                result.emplace(cur_dist, getExternalLabel(cur_inner_id));
                 (*iter_ctx)->PopDiscard();
             }
-            return result;
+            return result;            
         }
+        // if ((*iter_ctx)->GetDiscardElementNum() >= k * 2) {
+        //     int cycle_time = 0;
+        //     int64_t discard_cnt = (*iter_ctx)->GetDiscardElementNum();
+        //     while (!(*iter_ctx)->Empty()) {
+        //         if (cycle_time >= discard_cnt - k) {
+        //             int64_t cur_inner_id = (*iter_ctx)->GetTopID();
+        //             float cur_dist = (*iter_ctx)->GetTopDist();
+        //             result.emplace(cur_dist, getExternalLabel(cur_inner_id));
+        //         }
+        //         cycle_time++;
+        //         (*iter_ctx)->PopDiscard();
+        //     }
+        //     return result;
+        // }
         top_candidates = searchBaseLayerST<false, true>(UNUSED_ENTRY_POINT_NODE,
                                                         query_data,
                                                         std::max(ef, k),
