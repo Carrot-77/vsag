@@ -23,6 +23,7 @@ namespace vsag {
 
 IteratorFilterContext::~IteratorFilterContext() {
     allocator_->Deallocate(list_);
+    allocator_->Deallocate(visited_time_);
 }
 
 tl::expected<void, Error>
@@ -36,10 +37,15 @@ IteratorFilterContext::init(InnerIdType max_size,
     try {
         ef_search_ = ef_search;
         allocator_ = allocator;
+        max_size_ = max_size;
         discard_ = std::make_unique<std::priority_queue<std::pair<float, InnerIdType>>>();
+        inner_distance_ = std::make_unique<std::unordered_map<InnerIdType, float>>();
         list_ = reinterpret_cast<VisitedListType*>(
             allocator_->Allocate((uint64_t)max_size * sizeof(VisitedListType)));
         memset(list_, 0, max_size * sizeof(VisitedListType));
+        visited_time_ = reinterpret_cast<VisitedListType*>(
+            allocator_->Allocate((uint64_t)max_size * sizeof(VisitedListType)));
+        memset(visited_time_, 0, max_size * sizeof(VisitedListType));
     } catch (const std::bad_alloc& e) {
         LOG_ERROR_AND_RETURNS(ErrorType::NO_ENOUGH_MEMORY,
                               "failed to init iterator filter(not enough memory): ",
@@ -99,8 +105,34 @@ IteratorFilterContext::CheckPoint(InnerIdType id) {
     return list_[id] == 0;
 }
 
+void
+IteratorFilterContext::SetVisited(InnerIdType id) {
+    visited_time_[id] += 1;
+}
+
 int64_t IteratorFilterContext::GetDiscardElementNum() {
     return discard_->size();
+}
+
+void IteratorFilterContext::PrintVisited()
+{
+    for (int i = 0; i < max_size_; i++) {
+        if (visited_time_[i] > 0) {
+            logger::info("{} visited {}", i, visited_time_[i]);
+        }
+    }
+
+}
+
+void IteratorFilterContext::SetDistance(uint32_t id, float distance)
+{
+    (*inner_distance_)[id] = distance;
+}
+
+float IteratorFilterContext::GetDistance(uint32_t id) 
+{
+    auto search = inner_distance_->find(id);
+    return search == inner_distance_->end() ? -1.0 : search->second;;
 }
 
 };  // namespace vsag

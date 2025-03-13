@@ -448,6 +448,7 @@ HierarchicalNSW::searchBaseLayerST(InnerIdType ep_id,
             float cur_dist = (*iter_ctx)->GetTopDist();
             if (visited_array[cur_inner_id] != visited_array_tag && (*iter_ctx)->CheckPoint(cur_inner_id)) {
                 visited_array[cur_inner_id] = visited_array_tag;
+                (*iter_ctx)->SetVisited(cur_inner_id);
                 top_candidates.emplace(cur_dist, cur_inner_id);
                 candidate_set.emplace(-cur_dist, cur_inner_id);
                 lower_bound = std::max(lower_bound, cur_dist);
@@ -466,6 +467,8 @@ HierarchicalNSW::searchBaseLayerST(InnerIdType ep_id,
             candidate_set.emplace(-lower_bound, ep_id);
         }
         visited_array[ep_id] = visited_array_tag;
+        // if (iter_ctx != nullptr)
+        //     (*iter_ctx)->SetVisited(ep_id);
     }
 
     while (not candidate_set.empty()) {
@@ -509,13 +512,27 @@ HierarchicalNSW::searchBaseLayerST(InnerIdType ep_id,
             }
             if (visited_array[candidate_id] != visited_array_tag) {
                 visited_array[candidate_id] = visited_array_tag;
+                // if (iter_ctx != nullptr)
+                //     (*iter_ctx)->SetVisited(candidate_id);
                 if (is_id_allowed && not candidate_set.empty() &&
                     generator.NextFloat() < skip_threshold &&
                     not is_id_allowed->CheckValid(getExternalLabel(candidate_id))) {
                     continue;
                 }
+                float dist = 0;
                 char* currObj1 = getDataByInternalId(candidate_id);
-                float dist = fstdistfunc_(data_point, currObj1, dist_func_param_);
+                if (iter_ctx != nullptr) {
+                    float dis = (*iter_ctx)->GetDistance(candidate_id);
+                    if (dis != -1) {
+                        dist = dis;
+                    } else {
+                        dist = fstdistfunc_(data_point, currObj1, dist_func_param_);
+                    }
+                } else {
+                    dist = fstdistfunc_(data_point, currObj1, dist_func_param_);
+                    if (iter_ctx != nullptr) 
+                        (*iter_ctx)->SetDistance(candidate_id, dist);
+                }
                 if (top_candidates.size() < ef || lower_bound > dist) {
                     candidate_set.emplace(-dist, candidate_id);
                     vector_data_ptr = data_level0_memory_->GetElementPtr(candidate_set.top().second,

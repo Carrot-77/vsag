@@ -58,12 +58,23 @@ public:
     CheckPoint(uint32_t id) override;
     int64_t
     GetDiscardElementNum() override;
+    void
+    SetVisited(uint32_t id) override;
+    void
+    PrintVisited() override;
+    void
+    SetDistance(uint32_t id, float distance) override;
+    float
+    GetDistance(uint32_t id) override;
 
 private:
     int64_t ef_search_;
     bool is_first_used_;
+    uint32_t max_size_;
     Allocator *allocator_;
     VisitedListType* list_{nullptr};
+    VisitedListType *visited_time_{nullptr};
+    std::unique_ptr<std::unordered_map<InnerIdType, float>> inner_distance_;
     std::unique_ptr<std::priority_queue<std::pair<float, uint32_t>>> discard_;
 };
 
