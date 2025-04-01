@@ -431,6 +431,8 @@ HierarchicalNSW::searchBaseLayerST(InnerIdType ep_id,
     MaxHeap candidate_set(allocator_);
 
     float valid_ratio = is_id_allowed ? is_id_allowed->ValidRatio() : 1.0F;
+    // valid_ratio is proportional to skip_threshold. 
+    // The higher the valid_ratio, the higher the skip_threshold.
     float skip_threshold = valid_ratio == 1.0F ? 0 : (1 - ((1 - valid_ratio) * skip_ratio));
 
     float lower_bound;

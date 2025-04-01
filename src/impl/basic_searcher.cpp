@@ -44,6 +44,8 @@ BasicSearcher::visit(const GraphInterfacePtr& graph,
         graph->GetNeighbors(current_node_pair.second, neighbors);
     }
 
+    // valid_ratio is proportional to skip_threshold. 
+    // The higher the valid_ratio, the higher the skip_threshold.
     float skip_threshold =
         (filter != nullptr
              ? (filter->ValidRatio() == 1.0F ? 0 : (1 - ((1 - filter->ValidRatio()) * skip_ratio)))
