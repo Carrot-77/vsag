@@ -449,21 +449,6 @@ HierarchicalNSW::searchBaseLayerST(InnerIdType ep_id,
     float skip_threshold = valid_ratio == 1.0F ? 0 : (1 - ((1 - valid_ratio) * skip_ratio));
 
     float lower_bound;
-    if (iter_ctx != nullptr && !iter_ctx->IsFirstUsed()) {
-        lower_bound = 0.0;
-        while (!iter_ctx->Empty()) {
-            uint32_t cur_inner_id = iter_ctx->GetTopID();
-            float cur_dist = iter_ctx->GetTopDist();
-            if (visited_array[cur_inner_id] != visited_array_tag &&
-                iter_ctx->CheckPoint(cur_inner_id)) {
-                visited_array[cur_inner_id] = visited_array_tag;
-                top_candidates.emplace(cur_dist, cur_inner_id);
-                candidate_set.emplace(-cur_dist, cur_inner_id);
-                lower_bound = std::max(lower_bound, cur_dist);
-            }
-            iter_ctx->PopDiscard();
-        }
-    } else {
         if ((!has_deletions || !isMarkedDeleted(ep_id)) &&
             ((!is_id_allowed) || is_id_allowed->CheckValid(getExternalLabel(ep_id)))) {
             float dist = fstdistfunc_(data_point, getDataByInternalId(ep_id), dist_func_param_);
@@ -475,7 +460,6 @@ HierarchicalNSW::searchBaseLayerST(InnerIdType ep_id,
             candidate_set.emplace(-lower_bound, ep_id);
         }
         visited_array[ep_id] = visited_array_tag;
-    }
 
     while (not candidate_set.empty()) {
         std::pair<float, InnerIdType> current_node_pair = candidate_set.top();
@@ -537,17 +521,11 @@ HierarchicalNSW::searchBaseLayerST(InnerIdType ep_id,
                     if ((!has_deletions || !isMarkedDeleted(candidate_id)) &&
                         ((!is_id_allowed) ||
                          is_id_allowed->CheckValid(getExternalLabel(candidate_id)))) {
-                        if (iter_ctx != nullptr && !iter_ctx->CheckPoint(candidate_id)) {
-                            continue;
-                        }
                         top_candidates.emplace(dist, candidate_id);
                     }
 
                     if (top_candidates.size() > ef) {
                         auto cur_node_pair = top_candidates.top();
-                        if (iter_ctx != nullptr && iter_ctx->CheckPoint(cur_node_pair.second)) {
-                            iter_ctx->AddDiscardNode(cur_node_pair.first, cur_node_pair.second);
-                        }
                         top_candidates.pop();
                     }
 
@@ -1477,25 +1455,6 @@ HierarchicalNSW::searchKnn(const void* query_data,
     std::shared_ptr<float[]> normalize_query;
     normalizeVector(query_data, normalize_query);
     MaxHeap top_candidates(allocator_);
-    if (iter_ctx != nullptr && !iter_ctx->IsFirstUsed()) {
-        if (iter_ctx->Empty())
-            return result;
-        if (is_last_filter) {
-            while (!iter_ctx->Empty()) {
-                uint32_t cur_inner_id = iter_ctx->GetTopID();
-                float cur_dist = iter_ctx->GetTopDist();
-                result.emplace(cur_dist, getExternalLabel(cur_inner_id));
-                iter_ctx->PopDiscard();
-            }
-            return result;
-        }
-        top_candidates = searchBaseLayerST<false, true>(UNUSED_ENTRY_POINT_NODE,
-                                                        query_data,
-                                                        std::max(ef, k),
-                                                        is_id_allowed,
-                                                        skip_ratio,
-                                                        iter_ctx);
-    } else {
         int64_t currObj;
         {
             std::shared_lock data_loc(max_level_mutex_);
@@ -1534,30 +1493,19 @@ HierarchicalNSW::searchKnn(const void* query_data,
 
         if (num_deleted_ == 0) {
             top_candidates = searchBaseLayerST<false, true>(
-                currObj, query_data, std::max(ef, k), is_id_allowed, skip_ratio, iter_ctx);
+                currObj, query_data, std::max(ef, k), is_id_allowed, skip_ratio);
         } else {
             top_candidates = searchBaseLayerST<true, true>(
-                currObj, query_data, std::max(ef, k), is_id_allowed, skip_ratio, iter_ctx);
+                currObj, query_data, std::max(ef, k), is_id_allowed, skip_ratio);
         }
-    }
 
     while (top_candidates.size() > k) {
-        if (iter_ctx != nullptr) {
-            std::pair<float, InnerIdType> curr = top_candidates.top();
-            iter_ctx->AddDiscardNode(curr.first, curr.second);
-        }
         top_candidates.pop();
     }
     while (not top_candidates.empty()) {
         std::pair<float, InnerIdType> rez = top_candidates.top();
         result.emplace(rez.first, getExternalLabel(rez.second));
-        if (iter_ctx != nullptr) {
-            iter_ctx->SetPoint(rez.second);
-        }
         top_candidates.pop();
-    }
-    if (iter_ctx != nullptr) {
-        iter_ctx->SetOFFFirstUsed();
     }
     return result;
 }

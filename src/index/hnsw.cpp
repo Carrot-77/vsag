@@ -236,16 +236,6 @@ HNSW::knn_search(const DatasetPtr& query,
         // check search parameters
         auto params = HnswSearchParameters::FromJson(parameters);
 
-        if (iter_ctx != nullptr && *iter_ctx == nullptr) {
-            auto* filter_context = new IteratorFilterContext();
-            filter_context->init(alg_hnsw_->getMaxElements(), params.ef_search, allocator_.get());
-            *iter_ctx = filter_context;
-        }
-        IteratorFilterContext* iter_filter_ctx = nullptr;
-        if (iter_ctx != nullptr) {
-            iter_filter_ctx = static_cast<IteratorFilterContext*>(*iter_ctx);
-        }
-
         // perform search
         int64_t original_k = k;
         std::priority_queue<std::pair<float, LabelType>> results;
@@ -259,9 +249,7 @@ HNSW::knn_search(const DatasetPtr& query,
                                            k,
                                            std::max(params.ef_search, k),
                                            filter_ptr,
-                                           params.skip_ratio,
-                                           iter_filter_ctx,
-                                           is_last_filter);
+                                           params.skip_ratio);
         } catch (const std::runtime_error& e) {
             LOG_ERROR_AND_RETURNS(ErrorType::INTERNAL_ERROR,
                                   "failed to perofrm knn_search(internalError): ",
