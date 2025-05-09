@@ -112,6 +112,18 @@ public:
               int64_t k,
               const std::string& parameters,
               const FilterPtr& filter,
+              Allocator *allocator) const override {
+        if (GetNumElements() == 0) {
+            return DatasetImpl::MakeEmptyDataset();
+        }
+        SAFE_CALL(return this->inner_index_->KnnSearch(query, k, parameters, filter, allocator));
+    }
+
+    tl::expected<DatasetPtr, Error>
+    KnnSearch(const DatasetPtr& query,
+              int64_t k,
+              const std::string& parameters,
+              const FilterPtr& filter,
               IteratorContext*& iter_ctx,
               bool is_last_filter) const override {
         if (GetNumElements() == 0) {
