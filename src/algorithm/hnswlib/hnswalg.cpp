@@ -447,8 +447,12 @@ HierarchicalNSW::searchBaseLayerST(InnerIdType ep_id,
     vl_type visited_array_tag = vl->curV;
     vsag::Allocator *search_allocator = allocator == nullptr ? allocator_ : allocator;
 
-    MaxHeap top_candidates(search_allocator);
-    MaxHeap candidate_set(search_allocator);
+    vsag::Vector<std::pair<float, InnerIdType>> top_candidates_buffer(search_allocator);
+    top_candidates_buffer.reserve(ef * 2);
+    MaxHeap top_candidates(CompareByFirst(), top_candidates_buffer);
+    vsag::Vector<std::pair<float, InnerIdType>> candidate_set_buffer(search_allocator);
+    candidate_set_buffer.reserve(ef * 2);
+    MaxHeap candidate_set(CompareByFirst(), candidate_set_buffer);
 
     float valid_ratio = is_id_allowed ? is_id_allowed->ValidRatio() : 1.0F;
     float skip_threshold = valid_ratio == 1.0F ? 0 : (1 - ((1 - valid_ratio) * skip_ratio));
@@ -1490,7 +1494,10 @@ HierarchicalNSW::searchKnn(const void* query_data,
     vsag::Allocator *search_alloctor = allocator == nullptr ? allocator_ : allocator;
     std::shared_ptr<float[]> normalize_query;
     normalizeVector(query_data, normalize_query);
-    MaxHeap top_candidates(search_alloctor);
+    vsag::Vector<std::pair<float, InnerIdType>> top_candidates_buffer(search_alloctor);
+    top_candidates_buffer.reserve(std::max(ef, k) * 2);
+    MaxHeap top_candidates(CompareByFirst(), top_candidates_buffer);
+    vsag::Vector<std::pair<float, InnerIdType>> candidate_set_buffer(search_alloctor);
     if (iter_ctx != nullptr && !iter_ctx->IsFirstUsed()) {
         if (iter_ctx->Empty())
             return result;

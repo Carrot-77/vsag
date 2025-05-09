@@ -42,9 +42,10 @@ public:
     Query(float* result_dists,
           const ComputerInterfacePtr& computer,
           const InnerIdType* idx,
-          InnerIdType id_count) override {
+          InnerIdType id_count,
+          Allocator *allocator = nullptr) override {
         auto comp = std::static_pointer_cast<Computer<QuantTmpl>>(computer);
-        this->query(result_dists, comp, idx, id_count);
+        this->query(result_dists, comp, idx, id_count, allocator);
     }
 
     ComputerInterfacePtr
@@ -142,13 +143,15 @@ private:
     query(float* result_dists,
           const float* query_vector,
           const InnerIdType* idx,
-          InnerIdType id_count);
+          InnerIdType id_count,
+          Allocator* allocator);
 
     inline void
     query(float* result_dists,
           const std::shared_ptr<Computer<QuantTmpl>>& computer,
           const InnerIdType* idx,
-          InnerIdType id_count);
+          InnerIdType id_count,
+          Allocator* allocator);
 
     ComputerInterfacePtr
     factory_computer(const float* query) {
@@ -305,10 +308,11 @@ void
 FlattenDataCell<QuantTmpl, IOTmpl>::query(float* result_dists,
                                           const float* query_vector,
                                           const InnerIdType* idx,
-                                          InnerIdType id_count) {
+                                          InnerIdType id_count,
+                                          Allocator* allocator) {
     auto computer = quantizer_->FactoryComputer();
     computer->SetQuery(query_vector);
-    this->Query(result_dists, computer, idx, id_count);
+    this->Query(result_dists, computer, idx, id_count, allocator);
 }
 
 template <typename QuantTmpl, typename IOTmpl>
@@ -316,7 +320,9 @@ void
 FlattenDataCell<QuantTmpl, IOTmpl>::query(float* result_dists,
                                           const std::shared_ptr<Computer<QuantTmpl>>& computer,
                                           const InnerIdType* idx,
-                                          InnerIdType id_count) {
+                                          InnerIdType id_count,
+                                          Allocator* allocator) {
+    Allocator *search_alloc = allocator == nullptr ? allocator_ : allocator;
     for (uint32_t i = 0; i < this->prefetch_jump_code_size_ and i < id_count; i++) {
         if (force_in_memory_) {
             this->force_in_memory_io_->Prefetch(
@@ -328,9 +334,9 @@ FlattenDataCell<QuantTmpl, IOTmpl>::query(float* result_dists,
         }
     }
     if (not force_in_memory_ and not this->io_->InMemory() and id_count > 1) {
-        ByteBuffer codes(id_count * this->code_size_, allocator_);
-        Vector<uint64_t> sizes(id_count, this->code_size_, allocator_);
-        Vector<uint64_t> offsets(id_count, this->code_size_, allocator_);
+        ByteBuffer codes(id_count * this->code_size_, search_alloc);
+        Vector<uint64_t> sizes(id_count, this->code_size_, search_alloc);
+        Vector<uint64_t> offsets(id_count, this->code_size_, search_alloc);
         for (int64_t i = 0; i < id_count; ++i) {
             offsets[i] = idx[i] * code_size_;
         }

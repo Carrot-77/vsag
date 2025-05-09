@@ -87,6 +87,15 @@ public:
               int64_t k,
               const std::string& parameters,
               const FilterPtr& filter,
+              Allocator *allocator) const {
+        throw std::runtime_error("Index doesn't support new filter");
+    };
+
+    [[nodiscard]] virtual DatasetPtr
+    KnnSearch(const DatasetPtr& query,
+              int64_t k,
+              const std::string& parameters,
+              const FilterPtr& filter,
               IteratorContext*& iter_ctx,
               bool is_last_filter) const {
         throw std::runtime_error("Index doesn't support new filter");

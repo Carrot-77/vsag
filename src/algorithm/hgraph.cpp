@@ -188,7 +188,17 @@ HGraph::KnnSearch(const DatasetPtr& query,
                   int64_t k,
                   const std::string& parameters,
                   const FilterPtr& filter) const {
+    return KnnSearch(query, k, parameters, filter, nullptr);
+}
+
+DatasetPtr
+HGraph::KnnSearch(const DatasetPtr& query,
+                  int64_t k,
+                  const std::string& parameters,
+                  const FilterPtr& filter,
+                  Allocator *allocator) const {
     int64_t query_dim = query->GetDim();
+    Allocator *search_allocator = allocator == nullptr ? allocator_ : allocator;
     CHECK_ARGUMENT(query_dim == dim_,
                    fmt::format("query.dim({}) must be equal to index.dim({})", query_dim, dim_));
     // check k
@@ -203,6 +213,7 @@ HGraph::KnnSearch(const DatasetPtr& query,
     search_param.topk = 1;
     search_param.ef = 1;
     search_param.is_inner_id_allowed = nullptr;
+    search_param.search_alloc = search_allocator;
     for (auto i = static_cast<int64_t>(this->route_graphs_.size() - 1); i >= 0; --i) {
         auto result = this->search_one_graph(query->GetFloat32Vectors(),
                                              this->route_graphs_[i],
@@ -240,10 +251,10 @@ HGraph::KnnSearch(const DatasetPtr& query,
         return DatasetImpl::MakeEmptyDataset();
     }
     auto count = static_cast<const int64_t>(search_result.size());
-    auto [dataset_results, dists, ids] = CreateFastDataset(count, allocator_);
+    auto [dataset_results, dists, ids] = CreateFastDataset(count, search_allocator);
     char* extra_infos = nullptr;
     if (extra_info_size_ > 0) {
-        extra_infos = (char*)allocator_->Allocate(extra_info_size_ * search_result.size());
+        extra_infos = (char*)search_allocator->Allocate(extra_info_size_ * search_result.size());
         dataset_results->ExtraInfos(extra_infos);
     }
     for (int64_t j = count - 1; j >= 0; --j) {
@@ -315,6 +326,7 @@ HGraph::KnnSearch(const DatasetPtr& query,
         search_param.topk = 1;
         search_param.ef = 1;
         search_param.is_inner_id_allowed = nullptr;
+        search_param.search_alloc = allocator_;
         if (iter_filter_ctx->IsFirstUsed()) {
             for (auto i = static_cast<int64_t>(this->route_graphs_.size() - 1); i >= 0; --i) {
                 auto result = this->search_one_graph(query->GetFloat32Vectors(),
