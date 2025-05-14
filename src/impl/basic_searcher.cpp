@@ -101,12 +101,8 @@ BasicSearcher::search_impl(const GraphInterfacePtr& graph,
                            const InnerSearchParam& inner_search_param,
                            IteratorFilterContext* iter_ctx) const {
     Allocator *alloc = inner_search_param.search_alloc == nullptr ? allocator_ : inner_search_param.search_alloc;
-    vsag::Vector<std::pair<float, InnerIdType>> top_candidates_buffer(alloc);
-    top_candidates_buffer.reserve(inner_search_param.ef * 2);
-    MaxHeap top_candidates(CompareByFirst(), top_candidates_buffer);
-    vsag::Vector<std::pair<float, InnerIdType>> candidate_set_buffer(alloc);
-    candidate_set_buffer.reserve(inner_search_param.ef * 2);
-    MaxHeap candidate_set(CompareByFirst(), candidate_set_buffer);
+    MaxHeap top_candidates(alloc);
+    MaxHeap candidate_set(alloc);
 
     if (not graph or not flatten) {
         return top_candidates;

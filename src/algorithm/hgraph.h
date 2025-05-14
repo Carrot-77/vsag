@@ -94,6 +94,11 @@ public:
               bool is_last_filter) const override;
 
     [[nodiscard]] DatasetPtr
+    KnnSearch(const DatasetPtr& query,
+              int64_t k,
+              SearchParam &search_param) const override;
+
+    [[nodiscard]] DatasetPtr
     RangeSearch(const DatasetPtr& query,
                 float radius,
                 const std::string& parameters,

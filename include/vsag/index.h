@@ -32,6 +32,7 @@
 #include "vsag/index_features.h"
 #include "vsag/iterator_context.h"
 #include "vsag/readerset.h"
+#include "vsag/search_param.h"
 
 namespace vsag {
 
@@ -199,6 +200,13 @@ public:
               const FilterPtr& filter,
               IteratorContext*& iter_ctx,
               bool is_last_search) const {
+        throw std::runtime_error("Index doesn't support new filter");
+    }
+
+    virtual tl::expected<DatasetPtr, Error>
+    KnnSearch(const DatasetPtr& query,
+              int64_t k,
+              SearchParam &search_param) const {
         throw std::runtime_error("Index doesn't support new filter");
     }
 

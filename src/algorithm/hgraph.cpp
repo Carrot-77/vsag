@@ -272,6 +272,17 @@ HGraph::KnnSearch(const DatasetPtr& query,
 DatasetPtr
 HGraph::KnnSearch(const DatasetPtr& query,
                   int64_t k,
+                  SearchParam &search_param) const {
+    if (search_param.is_iter_filter) {
+        return KnnSearch(query, k, search_param.parameters, search_param.filter, search_param.iter_ctx, search_param.is_last_search);
+    } else {
+        return KnnSearch(query, k, search_param.parameters, search_param.filter, search_param.allocator);
+    }
+}
+
+DatasetPtr
+HGraph::KnnSearch(const DatasetPtr& query,
+                  int64_t k,
                   const std::string& parameters,
                   const FilterPtr& filter,
                   IteratorContext*& iter_ctx,
