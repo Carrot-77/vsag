@@ -41,7 +41,8 @@ public:
     Query(float* result_dists,
           const ComputerInterfacePtr& computer,
           const InnerIdType* idx,
-          InnerIdType id_count) = 0;
+          InnerIdType id_count,
+          Allocator* allocator = nullptr) = 0;
 
     virtual ComputerInterfacePtr
     FactoryComputer(const float* query) = 0;
@@ -112,10 +113,10 @@ public:
     }
 
     virtual void
-    EnableForceInMemory(){};
+    EnableForceInMemory() {};
 
     virtual void
-    DisableForceInMemory(){};
+    DisableForceInMemory() {};
 
 public:
     std::shared_mutex mutex_;
